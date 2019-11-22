@@ -1,0 +1,3 @@
+[s390x-bastion-workstation]
+<CHANGEME! bastion workstation ip> ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+

@@ -1,0 +1,8 @@
+---
+# defaults file for configure-apache-ignition
+install_mode: zvm
+download_dest: /root/Downloads
+bootfile_dest: "{{ bootfile_dest_dict[install_mode] }}"
+bootfile_dest_dict:
+  zkvm: /var/lib/tftpboot
+  zvm: /root/rhcos-bootfiles

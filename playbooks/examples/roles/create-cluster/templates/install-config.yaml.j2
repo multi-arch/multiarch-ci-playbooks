@@ -1,0 +1,23 @@
+apiVersion: v1
+baseDomain: "{{ cluster_base_domain }}"
+compute:
+- hyperthreading: Enabled
+  name: worker
+  replicas: 0
+controlPlane:
+  hyperthreading: Enabled
+  name: master
+  replicas: {{ cluster_nodes['masters'].keys() | length }}
+metadata:
+  name: "{{ cluster_name }}"
+networking:
+  clusterNetworks:
+  - cidr: 10.128.0.0/14
+    hostPrefix: 23
+  networkType: OpenShiftSDN
+  serviceNetwork:
+  - 172.30.0.0/16
+platform:
+  none: {}
+pullSecret: '{{ ocp4_pull_secret | to_json }}'
+sshKey: '{{ bastion_pubkey.content | b64decode }}'
