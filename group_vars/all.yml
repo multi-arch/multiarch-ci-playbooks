@@ -6,26 +6,30 @@ cluster_name: test
 
 # The URL of of the archive containing the
 # RHCOS kernel, initramfs, and disk images
-rhcos_version: "CHANGE-ME! rhcos version"
-rhcos_download_url: "CHANGE-ME! rhcos download url"
+rhcos_version: "42s390x.81.20191126.0"
+rhcos_download_url: "https://mirror.openshift.com/pub/openshift-v4/s390x/dependencies/rhcos/pre-release/4.2.0-0.nightly-s390x-2019-11-26-152324/"
 
 # The download URL of the openshift-install binary
-openshift_install_binary_url: "CHANGE-ME! openshift-install binary"
+openshift_install_binary_url: "https://mirror.openshift.com/pub/openshift-v4/s390x/clients/ocp-dev-preview/latest/openshift-install-linux-4.2.0-0.nightly-s390x-2019-11-26-194321.tar.gz"
 
-# The public DNS server to use.  This can be
+# The public DNS server to use.  This should be
 # changed to a DNS server on your intranet.
 dns_nameserver: 8.8.8.8
 
-# cluster gateway ip
+# The IP address of the local network
+# gateway, and the netmask/cidr of
+# the subnet
 subnet_gateway: 192.168.0.0
 subnet_netmask: 255.255.255.0
 subnet_cidr: 192.168.0.0/24
 subnet_in_addr_name: "{{ subnet_cidr.split('.')[:3] | reverse | join('.') }}"
 
+# This is the IP address of the bastion which the
+# cluster nodes can see.
 bastion_private_ip_address: 192.168.0.1
-# this will be the same as the bastion private ip when
-# bastion is a separate VM, otherwise it is the gateway ip.
-# dhcp_server_ip_address is not used by default in a z/VM install
+# This is the IP address of the bastion
+# when the bastion is configures as a dhcp
+# server.  Otherwise it is ignored.
 dhcp_server_ip_address: 192.168.0.1
 
 # z/VM kernel parameters
@@ -97,6 +101,9 @@ cluster_nodes:
 
 install_mode: zvm
 
+# This will be the same as the bastion private ip when
+# bastion is a separate VM, otherwise it is the gateway ip.
+# dhcp_server_ip_address is not used by default in a z/VM install
 bastion_public_ip_address: "{{ ansible_default_ipv4.address }}"
 
 # pxe_mode (grub, pxelinux)
