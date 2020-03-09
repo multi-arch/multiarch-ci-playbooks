@@ -1,0 +1,118 @@
+---
+# Configure the internal domain name of the cluster here.
+cluster_base_domain: "example.com"
+cluster_domain_name: "{{ cluster_name }}.{{ cluster_base_domain }}"
+cluster_name: test
+
+# The URL of of the archive containing the
+# RHCOS kernel, initramfs, and disk images
+rhcos_version: "CHANGE-ME! rhcos version"
+rhcos_download_url: "CHANGE-ME! rhcos download url"
+
+# The download URL of the openshift-install binary
+openshift_install_binary_url: "CHANGE-ME! openshift-install binary"
+
+# The public DNS server to use.  This can be
+# changed to a DNS server on your intranet.
+dns_nameserver: 8.8.8.8
+
+# cluster gateway ip
+subnet_gateway: 192.168.0.0
+subnet_netmask: 255.255.255.0
+subnet_cidr: 192.168.0.0/24
+subnet_in_addr_name: "{{ subnet_cidr.split('.')[:3] | reverse | join('.') }}"
+
+bastion_private_ip_address: 192.168.0.1
+# this will be the same as the bastion private ip when
+# bastion is a separate VM, otherwise it is the gateway ip.
+# dhcp_server_ip_address is not used by default in a z/VM install
+dhcp_server_ip_address: 192.168.0.1
+
+# z/VM kernel parameters
+# User must supply zvm rd.znet device id
+# based on their own environment.
+# example:
+# "rd.znet=qeth,0.0.0600,0.0.0601,0.0.0602,layer2=1,portno=0"
+zvm_rd_znet: ""
+# User must supply zvm rd.dasd device id kernel arg.
+# This is the device to install coreos to.
+# WARNING - using the wrong device id could result in loss of data.  The
+# device used in this example is not necessarily correct for your
+# environment.
+# example:
+# "rd.dasd=0.0.0120"
+zvm_rd_dasd: ""
+
+coreos_kargs_net:
+  zvm: "ip={{ cluster_nodes[coreos_role][item].ip }}::{{ subnet_gateway }}:{{ subnet_netmask }}:::none nameserver={{ bastion_private_ip_address }} {{ zvm_rd_znet }}"
+
+coreos_kargs_extra:
+  zvm:  "{{ zvm_rd_dasd }}"
+
+dev_disk:
+  zvm: dasda
+
+# This is the default node configuration.
+# Please ensure the MAC addresses are
+# correct for the hardware you are deploying to.
+# The IP addresses must be on the same subnet as
+# the {{ cluster_subnet_prefix }}
+# CHANGEME!
+cluster_nodes:
+  bootstrap:
+    bootstrap-0:
+      mac: '52:54:00:d0:f7:03'
+      ip: '192.168.0.2'
+      disk: "{{ dev_disk[install_mode] }}"
+      ign_profile: bootstrap.ign
+  masters:
+    master-0:
+      mac: '52:54:00:da:70:41'
+      ip: '192.168.0.3'
+      disk: "{{ dev_disk[install_mode] }}"
+      ign_profile: master.ign
+    master-1:
+      mac: '52:54:00:a2:93:d8'
+      ip: '192.168.0.4'
+      disk: "{{ dev_disk[install_mode] }}"
+      ign_profile: master.ign
+    master-2:
+      mac: '52:54:00:d9:5b:d8'
+      ip: '192.168.0.5'
+      disk: "{{ dev_disk[install_mode] }}"
+      ign_profile: master.ign
+  workers:
+    worker-0:
+      mac: '52:54:00:70:8b:74'
+      ip: '192.168.0.6'
+      disk: "{{ dev_disk[install_mode] }}"
+      ign_profile: worker.ign
+    worker-1:
+      mac: '52:54:00:70:8b:75'
+      ip: '192.168.0.7'
+      disk: "{{ dev_disk[install_mode] }}"
+      ign_profile: worker.ign
+
+# The following variables should generally not need to be edited
+
+install_mode: zvm
+
+bastion_public_ip_address: "{{ ansible_default_ipv4.address }}"
+
+# pxe_mode (grub, pxelinux)
+# use pxelinux mode for zvm to generate
+# parmfiles, then punch and IPL manually
+pxe_mode: pxelinux
+
+ocp4_pull_secret: "{{ lookup('file', '~/.ocp4_pull_secret') | from_json }}"
+
+rhcos_disk_type:
+  zvm: metal-dasd
+
+rhcos_installer_initramfs: 'rhcos-{{ rhcos_version }}-installer-initramfs.img'
+rhcos_installer_kernel: 'rhcos-{{ rhcos_version }}-installer-kernel'
+rhcos_disk_image: 'rhcos-{{ rhcos_version }}-{{ rhcos_disk_type[install_mode] }}.raw.gz'
+
+rhcos_download_files:
+  - '{{ rhcos_installer_initramfs }}'
+  - '{{ rhcos_installer_kernel }}'

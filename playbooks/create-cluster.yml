@@ -1,0 +1,4 @@
+- name: create ocp4 cluster
+  hosts: s390x-bastion-workstation
+  roles:
+  - "{{ playbook_dir }}/examples/roles/create-cluster"

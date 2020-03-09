@@ -1,0 +1,81 @@
+---
+- name: install apache httpd
+  yum:
+    name: httpd
+    state: latest
+
+- name: bind httpd to port 8080
+  lineinfile:
+    dest: /etc/httpd/conf/httpd.conf
+    regexp: ^Listen 80
+    line: Listen 8080
+
+- name: restart httpd
+  service:
+    name: httpd.service
+    state: started
+    enabled: yes
+
+- name: allow traffic at 8080 for apache
+  tags: firewall
+  firewalld:
+    port: 8080/tcp
+    zone: "{{ item }}"
+    state: enabled
+    permanent: true
+  with_items:
+  - internal
+  - public
+  notify:
+   - restart firewalld
+
+- name: make bootfile dir
+  file:
+    path: "{{ bootfile_dest }}"
+    state: directory
+
+- name: download images
+  get_url:
+    url: "{{ rhcos_download_url }}/{{ item }}"
+    dest: "{{ bootfile_dest }}/{{ item }}"
+  with_items: '{{ rhcos_download_files }}'
+
+- block:
+  - name: install git
+    dnf:
+      name:
+      - git
+      - file
+      state: latest
+    when: install_mode == 'zkvm'
+
+  - name: clone s390x-tools
+    shell: git clone https://github.com/ibm-s390-tools/s390-tools.git
+    args:
+      chdir: /root
+      creates: /root/s390-tools
+    when: install_mode == 'zkvm'
+
+  - name: generate pxelinux0 entry (bootstrap)
+    vars:
+      coreos_role: bootstrap
+    include_tasks: generate_pxelinux0.yml
+    with_items: "{{ cluster_nodes[coreos_role] }}"
+
+  - name: generate pxelinux0 entry (masters)
+    vars:
+      coreos_role: masters
+    include_tasks: generate_pxelinux0.yml
+    with_items: "{{ cluster_nodes[coreos_role] }}"
+
+  - name: generate pxelinux0 entry (workers)
+    vars:
+      coreos_role: workers 
+    include_tasks: generate_pxelinux0.yml
+    with_items: "{{ cluster_nodes[coreos_role] }}"
+    when: cluster_nodes.workers is defined
+
+- name: Restart firewalld.service
+  service:
+    name: firewalld.service
+    state: restarted

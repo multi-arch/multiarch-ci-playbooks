@@ -1,0 +1,137 @@
+---
+# tasks file for create-cluster
+
+- name: download and set permissions for openshift-install
+  block:
+  - name: download and unzip openshift-install
+    unarchive:
+      src: "{{ openshift_install_binary_url}}"
+      dest: "/usr/local/bin/"
+      creates: "/usr/local/bin/openshift-install"
+      remote_src: yes
+
+  - name: set permissions for ocp installer
+    file:
+      path: "/usr/local/bin/openshift-install"
+      mode: 0755
+
+- name: create openshift workdir
+  file:
+    path: "{{ workdir }}"
+    state: "directory"
+
+- name: create ssh keypair
+  shell: ssh-keygen -t rsa -b 2048 -N '' -C 'OCP-4-Admin' -f /root/.ssh/id_rsa
+  args:
+    creates: ~/.ssh/id_rsa
+
+- name: slurp ssh pubkey
+  tags: config
+  slurp:
+    src: ~/.ssh/id_rsa.pub
+  register: bastion_pubkey
+
+# install config is deleted when ignition
+# configs are created.  this task also 
+# creates a copy to check for debugging
+- name: generate install-config.yaml
+  tags: config
+  template:
+    dest: "{{ workdir }}/install-config.yaml"
+    src: install-config.yaml.j2
+  with_items:
+  - install-config.yaml
+  - install-config.copy.yaml
+
+- name: create ignition configs
+  tags: config
+  shell: "openshift-install --dir=`pwd` create ignition-configs"
+  args:
+    chdir: "{{ workdir }}"
+    creates: "{{ workdir }}/metadata.json"
+
+- block:
+  - name: make ignition config directory
+    file:
+      path: /var/www/html/ignition
+      state: directory
+  - name: get ign files
+    tags: config
+    shell: ls {{ workdir }}/*.ign
+    register: ign_raw
+  - name: copy ignition configs to /var/www/html/ignition
+    tags: config
+    copy:
+      src: "{{ item }}"
+      dest: "/var/www/html/ignition/"
+      remote_src: yes
+    with_items: "{{ ign_raw.stdout_lines }}"
+
+- name: mkdir ~/.kube
+  file:
+    path: ~/.kube
+    state: directory
+
+- name: install kubeconfig
+  tags: wait-install
+  copy:
+    src: "{{ workdir }}/auth/kubeconfig"
+    dest: "~/.kube/config"
+    remote_src: yes
+    force: yes
+
+- name: create /etc/hosts entry
+  tags: etc-hosts
+  connection: local
+  copy:
+    dest: "{{ playbook_dir }}/../etc.hosts"
+    content: >
+      {{ bastion_public_ip_address }}
+      bastion.{{ cluster_domain_name }}
+      api.{{ cluster_domain_name }}
+      console-openshift-console.apps.{{ cluster_domain_name }}
+      oauth-openshift.apps.{{ cluster_domain_name }}
+
+- name: wait for bootstrap node accessibility
+  wait_for:
+    port: 22
+    host: "{{ cluster_nodes['bootstrap'][item].ip }}"
+    search_regex: OpenSSH
+    delay: 1
+    timeout: 5000
+  with_items: "{{ cluster_nodes['bootstrap'] }}"
+
+- name: wait for master node accessibility
+  wait_for:
+    port: 22
+    host: "{{ cluster_nodes['masters'][item].ip }}"
+    search_regex: OpenSSH
+    delay: 1
+    timeout: 5000
+  with_items: "{{ cluster_nodes['masters'] }}"
+
+- name: wait for worker node accessibility
+  wait_for:
+    port: 22
+    host: "{{ cluster_nodes['workers'][item].ip }}"
+    search_regex: OpenSSH
+    delay: 1
+    timeout: 5000
+  with_items: "{{ cluster_nodes['workers'] }}"
+  when: cluster_nodes.workers is defined
+
+- name: wait for bootstrap complete
+  tags: config
+  shell: openshift-install --dir=`pwd` wait-for bootstrap-complete --log-level debug
+  args:
+    chdir: "{{ workdir }}"
+  retries: 1
+  delay: 0
+
+- name: wait for install complete
+  tags: wait-install
+  shell: openshift-install --dir=`pwd` wait-for install-complete
+  args:
+    chdir: "{{ workdir }}"
+  retries: 1
+  delay: 0

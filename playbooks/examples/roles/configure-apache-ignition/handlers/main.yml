@@ -1,0 +1,8 @@
+---
+# handlers file for configure-apache-ignition
+- name: Restart firewalld.service
+  service:
+    name: firewalld.service
+    state: restarted
+  listen: "restart firewalld"
+
