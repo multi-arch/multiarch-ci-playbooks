@@ -1,4 +1,10 @@
-# multiarch-upi-playbooks
+# multiarch-ci-playbooks
+
+*This is not a production-ready configuration for running workloads.
+This automation is intended for test/development purposes only.
+Please refer to the official documentation for supported installation instructions*
+
+
 
 This repository provides a set of ansible playbooks
 demonstrating the automation of a minimal development/testing
