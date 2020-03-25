@@ -2,7 +2,7 @@
 
 *This is not a production-ready configuration for running workloads.
 This automation is intended for test/development purposes only.
-Please refer to the (official documentation)[https://docs.openshift.com/container-platform/4.2/installing/installing_ibm_z/installing-ibm-z.html] for supported installation instructions*
+Please refer to the [official documentation](https://docs.openshift.com/container-platform/4.2/installing/installing_ibm_z/installing-ibm-z.html) for supported installation instructions*
 
 
 
